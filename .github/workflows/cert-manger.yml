@@ -28,3 +28,89 @@ jobs:
         sudo apt-get install -y certbot openssl zip unzip
         pip install certbot-dns-aliyun certbot-dns-cloudflare
 
+    - name: Check Certificate Expiry
+      id: expiry_check
+      run: |
+        NEED_RENEW="false"
+
+        # 检查阿里云证书
+        if [ -f "$CERT_DIR/mycert_ali.zip" ]; then
+          unzip -q -P "$ZIP_PASSWORD" "$CERT_DIR/mycert_ali.zip" -d /tmp/aliyun
+          if [ -f "/tmp/aliyun/gaoyp.com.cer" ]; then
+            expiry=$(openssl x509 -enddate -noout -in "/tmp/aliyun/gaoyp.com.cer" | cut -d= -f2)
+            remaining=$(( ($(date -d "$expiry" +%s) - $(date +%s)) / 86400 ))
+            [ $remaining -le 30 ] && NEED_RENEW="true"
+          else
+            NEED_RENEW="true"
+          fi
+          rm -rf /tmp/aliyun
+        else
+          NEED_RENEW="true"
+        fi
+
+        # 检查Cloudflare证书
+        if [ -f "$CERT_DIR/mycert_cf.zip" ]; then
+          unzip -q -P "$ZIP_PASSWORD" "$CERT_DIR/mycert_cf.zip" -d /tmp/cloudflare
+          if [ -f "/tmp/cloudflare/gaotz.com.cer" ]; then
+            expiry=$(openssl x509 -enddate -noout -in "/tmp/cloudflare/gaotz.com.cer" | cut -d= -f2)
+            remaining=$(( ($(date -d "$expiry" +%s) - $(date +%s)) / 86400 ))
+            [ $remaining -le 30 ] && NEED_RENEW="true"
+          fi
+          rm -rf /tmp/cloudflare
+        else
+          NEED_RENEW="true"
+        fi
+
+        echo "NEED_RENEW=$NEED_RENEW" >> $GITHUB_ENV
+
+    - name: Generate Certificates
+      if: env.NEED_RENEW == 'true'
+      run: |
+        # 生成阿里云证书（含所有域名）
+        certbot certonly --force-renewal \
+          --dns-aliyun \
+          --dns-aliyun-credentials <(echo "dns_aliyun_access_key = $ALI_KEY dns_aliyun_access_key_secret = $ALI_SECRET") \
+          -d gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com \
+          --agree-tos \
+          --email $CF_EMAIL \
+          --non-interactive \
+          --config-dir /tmp/certs/aliyun
+
+        # 打包阿里云证书
+        mkdir -p $CERT_DIR/aliyun
+        cp /tmp/certs/aliyun/live/gaoyp.com/*.pem $CERT_DIR/aliyun/
+        cd $CERT_DIR/aliyun && \
+          mv cert.pem gaoyp.com.cer && \
+          mv privkey.pem gaoyp.com.key && \
+          mv fullchain.pem gaoyp.com.fullchain.cer && \
+          zip -q -P "$ZIP_PASSWORD" ../mycert_ali.zip *.cer *.key
+        rm -rf $CERT_DIR/aliyun
+
+        # 生成Cloudflare证书（含所有域名）
+        certbot certonly --force-renewal \
+          --dns-cloudflare \
+          --dns-cloudflare-credentials <(echo "dns_cloudflare_email = $CF_EMAIL dns_cloudflare_api_key = $CF_KEY") \
+          -d gaotz.com,*.gaotz.com,gaoyp.com,*.gaoyp.com \
+          --agree-tos \
+          --email $CF_EMAIL \
+          --non-interactive \
+          --config-dir /tmp/certs/cloudflare
+
+        # 打包Cloudflare证书
+        mkdir -p $CERT_DIR/cloudflare
+        cp /tmp/certs/cloudflare/live/gaotz.com/*.pem $CERT_DIR/cloudflare/
+        cd $CERT_DIR/cloudflare && \
+          mv cert.pem gaotz.com.cer && \
+          mv privkey.pem gaotz.com.key && \
+          mv fullchain.pem gaotz.com.fullchain.cer && \
+          zip -q -P "$ZIP_PASSWORD" ../mycert_cf.zip *.cer *.key
+        rm -rf $CERT_DIR/cloudflare
+
+    - name: Commit Certificates
+      if: env.NEED_RENEW == 'true'
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git add $CERT_DIR/
+        git commit -m "Auto-renew certificates at $(date +'%Y-%m-%d %H:%M:%S')"
+        git push
