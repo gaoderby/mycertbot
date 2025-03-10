@@ -36,13 +36,13 @@ jobs:
 
         # 生成凭据文件
         mkdir -p tmp_creds
-        echo "certbot_dns_aliyun:dns_aliyun_access_key=$ALI_KEY" > tmp_creds/aliyun.ini
-        echo "certbot_dns_aliyun:dns_aliyun_access_key_secret=$ALI_SECRET" >> tmp_creds/aliyun.ini
+        echo "dns_aliyun_access_key=$ALI_KEY" > tmp_creds/aliyun.ini
+        echo "dns_aliyun_access_key_secret=$ALI_SECRET" >> tmp_creds/aliyun.ini
         chmod 600 tmp_creds/aliyun.ini
         echo "cat tmp_creds/aliyun.ini"
         cat tmp_creds/aliyun.ini
 
-        certbot certonly -a certbot-dns-aliyun:dns-aliyun \
+        certbot certonly -a dns-aliyun \
           --dns-aliyun-credentials tmp_creds/aliyun.ini \
           --dns-aliyun-propagation-seconds 60 \
           -d 'gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com' \
