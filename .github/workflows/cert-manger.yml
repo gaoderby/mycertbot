@@ -36,15 +36,28 @@ jobs:
 
         # 生成凭据文件
         mkdir -p tmp_creds
-        printf "dns_aliyun_access_key=%s\ndns_aliyun_access_key_secret=%s" \
+        printf "certbot_dns_aliyun:dns_aliyun_access_key=%s\ncertbot_dns_aliyun:dns_aliyun_access_key_secret=%s" \
           "$ALI_KEY" "$ALI_SECRET" > tmp_creds/aliyun.ini
         chmod 600 tmp_creds/aliyun.ini
+        echo "cat tmp_creds/aliyun.ini"
+        cat tmp_creds/aliyun.ini
 
         certbot certonly --force-renewal \
           --authenticator dns-aliyun \
           --dns-aliyun-credentials tmp_creds/aliyun.ini \
-          --dns-aliyun-propagation-seconds 60 \
+          --certbot-dns-aliyun:dns-aliyun-propagation-seconds 60
           -d gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com \
+          --agree-tos \
+          --email "$CF_EMAIL" \
+          --non-interactive \
+          --config-dir "$WORK_DIR/config" \
+          --work-dir "$WORK_DIR/work" \
+          --logs-dir "$WORK_DIR/logs"
+
+        certbot certonly -a certbot-dns-aliyun:dns-aliyun \
+          --certbot-dns-aliyun:dns-aliyun-credentials tmp_creds/aliyun.ini \
+          --certbot-dns-aliyun:dns-aliyun-propagation-seconds 60 \
+          -d 'gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com' \
           --agree-tos \
           --email "$CF_EMAIL" \
           --non-interactive \
