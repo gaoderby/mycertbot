@@ -36,9 +36,9 @@ jobs:
 
         certbot certonly --force-renewal \
           --authenticator dns-aliyun \
-          --dns-aliyun-credentials <(
+          --dns-aliyun-credentials <( \
             printf "dns_aliyun_access_key = %s\ndns_aliyun_access_key_secret = %s" \
-            "$ALI_KEY" "$ALI_SECRET"
+            "$ALI_KEY" "$ALI_SECRET" \
           ) \
           --dns-aliyun-propagation-seconds 60 \
           -d gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com \
@@ -68,9 +68,9 @@ jobs:
 
         certbot certonly --force-renewal \
           --authenticator dns-cloudflare \
-          --dns-cloudflare-credentials <(
+          --dns-cloudflare-credentials <( \
             printf "dns_cloudflare_email = %s\ndns_cloudflare_api_key = %s" \
-            "$CF_EMAIL" "$CF_KEY"
+            "$CF_EMAIL" "$CF_KEY" \
           ) \
           --dns-cloudflare-propagation-seconds 30 \
           -d gaotz.com,*.gaotz.com,gaoyp.com,*.gaoyp.com \
