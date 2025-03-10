@@ -78,11 +78,21 @@ jobs:
         echo "cat tmp_creds/cloudflare.ini"
         cat tmp_creds/cloudflare.ini
 
+        echo "dns_aliyun_access_key=$ALI_KEY" > tmp_creds/aliyun.ini
+        echo "dns_aliyun_access_key_secret=$ALI_SECRET" >> tmp_creds/aliyun.ini
+        chmod 600 tmp_creds/aliyun.ini
+        echo "cat tmp_creds/aliyun.ini"
+        cat tmp_creds/aliyun.ini
+
         certbot certonly --force-renewal \
           --authenticator dns-cloudflare \
           --dns-cloudflare-credentials tmp_creds/cloudflare.ini \
           --dns-cloudflare-propagation-seconds 30 \
-          -d gaotz.com,*.gaotz.com,gaoyp.com,*gaoyp.com \
+          -d gaotz.com,*.gaotz.com \
+          --authenticator dns-aliyun \
+          --dns-aliyun-credentials tmp_creds/aliyun.ini \
+          --dns-aliyun-propagation-seconds 60 \
+          -d gaoyp.com,*.gaoyp.com \
           --agree-tos \
           --email "$CF_EMAIL" \
           --non-interactive \
