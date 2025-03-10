@@ -10,7 +10,7 @@ env:
   ALI_SECRET: ${{ secrets.ALI_SECRET }}
   CF_KEY: ${{ secrets.CF_KEY }}
   CF_EMAIL: ${{ secrets.CF_EMAIL }}
-  CERT_DIR: "./certs"
+  CERT_DIR: "${{ github.workspace }}/certs"
   ZIP_PASSWORD: ${{ secrets.MYCERT_PWD }}
 
 jobs:
@@ -29,57 +29,73 @@ jobs:
         pip install --upgrade certbot certbot-dns-aliyun certbot-dns-cloudflare
 
     - name: Generate AliCloud Certificate
-      env:
-        ALI_KEY: ${{ secrets.ALI_KEY }}
-        ALI_SECRET: ${{ secrets.ALI_SECRET }}
       run: |
+        # 创建证书专用目录
+        WORK_DIR="$CERT_DIR/aliyun_work"
+        mkdir -p "$WORK_DIR"/{config,work,logs}
+
         certbot certonly --force-renewal \
           --authenticator dns-aliyun \
-          --dns-aliyun-credentials <(echo "dns_aliyun_access_key = $ALI_KEY dns_aliyun_access_key_secret = $ALI_SECRET") \
+          --dns-aliyun-credentials <(
+            printf "dns_aliyun_access_key = %s\ndns_aliyun_access_key_secret = %s" \
+            "$ALI_KEY" "$ALI_SECRET"
+          ) \
           --dns-aliyun-propagation-seconds 60 \
           -d gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com \
           --agree-tos \
-          --email $CF_EMAIL \
+          --email "$CF_EMAIL" \
           --non-interactive \
-          --config-dir /tmp/certs/aliyun
+          --config-dir "$WORK_DIR/config" \
+          --work-dir "$WORK_DIR/work" \
+          --logs-dir "$WORK_DIR/logs"
 
-        mkdir -p $CERT_DIR/aliyun
-        cp /tmp/certs/aliyun/live/gaoyp.com/*.pem $CERT_DIR/aliyun/
-        cd $CERT_DIR/aliyun && \
-          mv cert.pem gaoyp.com.cer && \
-          mv privkey.pem gaoyp.com.key && \
-          mv fullchain.pem gaoyp.com.fullchain.cer && \
-          zip -q -P "$ZIP_PASSWORD" ../mycert_ali.zip *.cer *.key
-        rm -rf $CERT_DIR/aliyun
+        # 处理证书文件
+        mkdir -p "$CERT_DIR/aliyun"
+        cp "$WORK_DIR/config/live/gaoyp.com/cert.pem" "$CERT_DIR/aliyun/gaoyp.com.cer"
+        cp "$WORK_DIR/config/live/gaoyp.com/privkey.pem" "$CERT_DIR/aliyun/gaoyp.com.key"
+        cp "$WORK_DIR/config/live/gaoyp.com/fullchain.pem" "$CERT_DIR/aliyun/gaoyp.com.fullchain.cer"
+
+        # 压缩并清理
+        cd "$CERT_DIR/aliyun" && \
+          zip -q -P "$ZIP_PASSWORD" "../mycert_ali.zip" *.cer *.key
+        rm -rf "$WORK_DIR" "$CERT_DIR/aliyun"
 
     - name: Generate Cloudflare Certificate
-      env:
-        CF_KEY: ${{ secrets.CF_KEY }}
-        CF_EMAIL: ${{ secrets.CF_EMAIL }}
       run: |
+        # 创建证书专用目录
+        WORK_DIR="$CERT_DIR/cf_work"
+        mkdir -p "$WORK_DIR"/{config,work,logs}
+
         certbot certonly --force-renewal \
           --authenticator dns-cloudflare \
-          --dns-cloudflare-credentials <(echo "dns_cloudflare_email = $CF_EMAIL dns_cloudflare_api_key = $CF_KEY") \
+          --dns-cloudflare-credentials <(
+            printf "dns_cloudflare_email = %s\ndns_cloudflare_api_key = %s" \
+            "$CF_EMAIL" "$CF_KEY"
+          ) \
           --dns-cloudflare-propagation-seconds 30 \
           -d gaotz.com,*.gaotz.com,gaoyp.com,*.gaoyp.com \
           --agree-tos \
-          --email $CF_EMAIL \
+          --email "$CF_EMAIL" \
           --non-interactive \
-          --config-dir /tmp/certs/cloudflare
+          --config-dir "$WORK_DIR/config" \
+          --work-dir "$WORK_DIR/work" \
+          --logs-dir "$WORK_DIR/logs"
 
-        mkdir -p $CERT_DIR/cloudflare
-        cp /tmp/certs/cloudflare/live/gaotz.com/*.pem $CERT_DIR/cloudflare/
-        cd $CERT_DIR/cloudflare && \
-          mv cert.pem gaotz.com.cer && \
-          mv privkey.pem gaotz.com.key && \
-          mv fullchain.pem gaotz.com.fullchain.cer && \
-          zip -q -P "$ZIP_PASSWORD" ../mycert_cf.zip *.cer *.key
-        rm -rf $CERT_DIR/cloudflare
+        # 处理证书文件
+        mkdir -p "$CERT_DIR/cloudflare"
+        cp "$WORK_DIR/config/live/gaotz.com/cert.pem" "$CERT_DIR/cloudflare/gaotz.com.cer"
+        cp "$WORK_DIR/config/live/gaotz.com/privkey.pem" "$CERT_DIR/cloudflare/gaotz.com.key"
+        cp "$WORK_DIR/config/live/gaotz.com/fullchain.pem" "$CERT_DIR/cloudflare/gaotz.com.fullchain.cer"
+
+        # 压缩并清理
+        cd "$CERT_DIR/cloudflare" && \
+          zip -q -P "$ZIP_PASSWORD" "../mycert_cf.zip" *.cer *.key
+        rm -rf "$WORK_DIR" "$CERT_DIR/cloudflare"
 
     - name: Commit Changes
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
-        git add $CERT_DIR/
-        git commit -m "Auto-renew certificates $(date +'%Y-%m-%d')"
+        git add "$CERT_DIR"/
+        git commit -m "Auto-renew certificates $(date +'%Y-%m-%d %H:%M:%S')"
         git push
