@@ -82,7 +82,7 @@ jobs:
           --authenticator dns-cloudflare \
           --dns-cloudflare-credentials tmp_creds/cloudflare.ini \
           --dns-cloudflare-propagation-seconds 30 \
-          -d gaotz.com,*.gaotz.com \
+          -d gaotz.com,*.gaotz.com,gaoyp.com,*gaoyp.com \
           --agree-tos \
           --email "$CF_EMAIL" \
           --non-interactive \
