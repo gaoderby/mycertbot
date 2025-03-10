@@ -70,14 +70,19 @@ jobs:
         WORK_DIR="$CERT_DIR/cf_work"
         mkdir -p "$WORK_DIR"/{config,work,logs}
 
+        # 生成凭据文件
+        mkdir -p tmp_creds
+        echo "dns_cloudflare_email=$CF_EMAIL" > tmp_creds/cloudflare.ini
+        echo "dns_cloudflare_api_key=$CF_KEY" >> tmp_creds/cloudflare.ini
+        chmod 600 tmp_creds/cloudflare.ini
+        echo "cat tmp_creds/cloudflare.ini"
+        cat tmp_creds/cloudflare.ini
+
         certbot certonly --force-renewal \
           --authenticator dns-cloudflare \
-          --dns-cloudflare-credentials <( \
-            printf "dns_cloudflare_email = %s\ndns_cloudflare_api_key = %s" \
-            "$CF_EMAIL" "$CF_KEY" \
-          ) \
+          --dns-cloudflare-credentials tmp_creds/cloudflare.ini \
           --dns-cloudflare-propagation-seconds 30 \
-          -d gaotz.com,*.gaotz.com,gaoyp.com,*.gaoyp.com \
+          -d gaotz.com,*.gaotz.com \
           --agree-tos \
           --email "$CF_EMAIL" \
           --non-interactive \
