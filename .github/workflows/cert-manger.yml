@@ -28,41 +28,42 @@ jobs:
         sudo apt-get install -y certbot openssl zip unzip
         pip install --upgrade certbot certbot-dns-aliyun certbot-dns-cloudflare
 
-#    - name: Generate AliCloud Certificate
-#      run: |
-#        # 创建证书专用目录
-#        WORK_DIR="$CERT_DIR/aliyun_work"
-#        mkdir -p "$WORK_DIR"/{config,work,logs}
-#
-#        # 生成凭据文件
-#        mkdir -p tmp_creds
-#        echo "dns_aliyun_access_key=$ALI_KEY" > tmp_creds/aliyun.ini
-#        echo "dns_aliyun_access_key_secret=$ALI_SECRET" >> tmp_creds/aliyun.ini
-#        chmod 600 tmp_creds/aliyun.ini
-#        echo "cat tmp_creds/aliyun.ini"
-#        cat tmp_creds/aliyun.ini
-#
-#        certbot certonly -a dns-aliyun \
-#          --dns-aliyun-credentials tmp_creds/aliyun.ini \
-#          --dns-aliyun-propagation-seconds 60 \
-#          -d 'gaoyp.com,*.gaoyp.com,gaotz.com,*.gaotz.com' \
-#          --agree-tos \
-#          --email "$CF_EMAIL" \
-#          --non-interactive \
-#          --config-dir "$WORK_DIR/config" \
-#          --work-dir "$WORK_DIR/work" \
-#          --logs-dir "$WORK_DIR/logs"
-#
-#        # 处理证书文件
-#        mkdir -p "$CERT_DIR/aliyun"
-#        cp "$WORK_DIR/config/live/gaoyp.com/cert.pem" "$CERT_DIR/aliyun/gaoyp.com.cer"
-#        cp "$WORK_DIR/config/live/gaoyp.com/privkey.pem" "$CERT_DIR/aliyun/gaoyp.com.key"
-#        cp "$WORK_DIR/config/live/gaoyp.com/fullchain.pem" "$CERT_DIR/aliyun/gaoyp.com.fullchain.cer"
-#
-#        # 压缩并清理
-#        cd "$CERT_DIR/aliyun" && \
-#          zip -q -P "$ZIP_PASSWORD" "../mycert_ali.zip" *.cer *.key
-#        rm -rf "$WORK_DIR" "$CERT_DIR/aliyun"
+    - name: Generate AliCloud Certificate
+      run: |
+        # 创建证书专用目录
+        WORK_DIR="$CERT_DIR/aliyun_work"
+        mkdir -p "$WORK_DIR"/{config,work,logs}
+
+        # 生成凭据文件
+        mkdir -p tmp_creds
+        echo "dns_aliyun_access_key=$ALI_KEY" > tmp_creds/aliyun.ini
+        echo "dns_aliyun_access_key_secret=$ALI_SECRET" >> tmp_creds/aliyun.ini
+        chmod 600 tmp_creds/aliyun.ini
+        echo "cat tmp_creds/aliyun.ini"
+        cat tmp_creds/aliyun.ini
+
+        certbot certonly --force-renewal \
+          --authenticator dns-aliyun \
+          --dns-aliyun-credentials tmp_creds/aliyun.ini \
+          --dns-aliyun-propagation-seconds 60 \
+          -d gaoyp.com,*.gaoyp.com \
+          --agree-tos \
+          --email "$CF_EMAIL" \
+          --non-interactive \
+          --config-dir "$WORK_DIR/config" \
+          --work-dir "$WORK_DIR/work" \
+          --logs-dir "$WORK_DIR/logs"
+
+        # 处理证书文件
+        mkdir -p "$CERT_DIR/aliyun"
+        cp "$WORK_DIR/config/live/gaoyp.com/cert.pem" "$CERT_DIR/aliyun/gaoyp.com.cer"
+        cp "$WORK_DIR/config/live/gaoyp.com/privkey.pem" "$CERT_DIR/aliyun/gaoyp.com.key"
+        cp "$WORK_DIR/config/live/gaoyp.com/fullchain.pem" "$CERT_DIR/aliyun/gaoyp.com.fullchain.cer"
+
+        # 压缩并清理
+        cd "$CERT_DIR/aliyun" && \
+          zip -q -P "$ZIP_PASSWORD" "../mycert_ali.zip" *.cer *.key
+        rm -rf "$WORK_DIR" "$CERT_DIR/aliyun"
 
     - name: Generate Cloudflare Certificate
       run: |
