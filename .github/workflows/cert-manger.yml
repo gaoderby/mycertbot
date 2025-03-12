@@ -26,8 +26,8 @@ jobs:
 
     - name: Setup Environment
       run: |
-        sudo apt-get update
-        sudo apt-get install -y certbot openssl zip unzip
+        echo "===pwd==="
+        pwd
 
     - name: Commit Changes
       run: |
