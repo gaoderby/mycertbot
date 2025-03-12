@@ -1,21 +1,23 @@
-name: Auto Cert Manager
+name: Auto Renew Certificates (acme.sh v2.8.5)
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
-
-env:
-  ALI_KEY: ${{ secrets.ALI_KEY }}
-  ALI_SECRET: ${{ secrets.ALI_SECRET }}
-  CF_KEY: ${{ secrets.CF_KEY }}
-  CF_EMAIL: ${{ secrets.CF_EMAIL }}
-  CERT_DIR: "${{ github.workspace }}/certs"
-  ZIP_PASSWORD: ${{ secrets.MYCERT_PWD }}
+    - cron: "0 3 * * *"  # 每天 UTC 3 点检查
+  workflow_dispatch:
 
 jobs:
-  cert-manager:
+  certificate-manager:
     runs-on: ubuntu-latest
+    env:
+      RENEW_THRESHOLD: 30     # 触发续期的剩余天数
+      DOMAIN_ALI: "gaoyp.com" # 阿里云域名
+      DOMAIN_CF: "gaotz.com"  # Cloudflare 域名
+      Ali_Key: ${{ secrets.Ali_Key }}       # 阿里云 AccessKey ID
+      Ali_Secret: ${{ secrets.Ali_Secret }} # 阿里云 AccessKey Secret
+      CF_Key: ${{ secrets.CF_Key }}         # Cloudflare 全局 API Key
+      CF_Email: ${{ secrets.CF_Email }}     # Cloudflare 注册邮箱
+      MYCERT_PWD: ${{ secrets.MYCERT_PWD }} # ZIP 文件密码
+      CERT_DIR: "${{ github.workspace }}/certs"
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -26,7 +28,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y certbot openssl zip unzip
-        pip install --upgrade certbot certbot-dns-aliyun certbot-dns-cloudflare
 
     - name: Commit Changes
       run: |
